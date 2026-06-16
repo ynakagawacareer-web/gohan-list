@@ -234,7 +234,7 @@
     </div>
     <select class="sort-select" id="sort-select" onchange="setSort(this.value)">
       <option value="newest">登録順（新しい順）</option>
-      <option value="oldest">登録順（古い順）</option>
+      <option value="oldest" selected>登録順（古い順）</option>
       <option value="name">店名順（あいうえお）</option>
       <option value="address">住所順</option>
     </select>
@@ -290,7 +290,7 @@ const GAS_URL = "https://script.google.com/macros/s/AKfycbyPRzoNIqVTcZcNIiXkDPcn
 
 let restaurants = [];
 let currentFilter = "all";
-let currentSort = "newest";
+let currentSort = "oldest";
 let confirmingDeleteId = null;
 let editingId = null;
 
