@@ -428,6 +428,7 @@ function cardHTML(r) {
     </div>
     <div class="card-stamp">✓ 行った！</div>
     <div class="card-actions">
+      <button class="icon-btn" onclick="openMaps('${r.id}')" title="Google マップで開く">🗺️</button>
       <button class="icon-btn" onclick="startEdit('${r.id}')" title="編集">✏️</button>
       <button class="icon-btn" onclick="deleteRestaurant('${r.id}')" title="削除">🗑️</button>
     </div>
@@ -599,6 +600,14 @@ async function addRestaurant() {
     }
   } catch { showToast("追加に失敗しました"); }
   document.getElementById("add-btn").disabled = false;
+}
+
+// ---- Google マップ ----
+function openMaps(id) {
+  const r = restaurants.find(x => x.id === id);
+  if (!r) return;
+  const query = encodeURIComponent(r.address ? `${r.address} ${r.name}` : r.name);
+  window.open(`https://www.google.com/maps/search/?api=1&query=${query}`, '_blank', 'noopener,noreferrer');
 }
 
 // ---- Toast ----
