@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>近所のごはん帖</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;600&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet" />
+  <style>
+    /* ===================== BASE ===================== */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Noto Sans JP', sans-serif;
+      background: #FAF7F2;
+      color: #2C2C2C;
+      min-height: 100vh;
+    }
+    .app { max-width: 720px; margin: 0 auto; padding: 32px 16px 80px; }
+
+    /* ===================== HEADER ===================== */
+    .header {
+      text-align: center;
+      margin-bottom: 40px;
+      padding-bottom: 24px;
+      border-bottom: 2px solid #2C2C2C;
+    }
+    .header-eyebrow { font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase; color: #B8A99A; margin-bottom: 8px; }
+    .header-title { font-family: 'Noto Serif JP', serif; font-size: 28px; font-weight: 600; color: #2C2C2C; }
+    .header-sub { font-size: 13px; color: #B8A99A; margin-top: 8px; }
+
+    /* ===================== STATS ===================== */
+    .stats { display: flex; gap: 16px; margin-bottom: 28px; }
+    .stat-item { flex: 1; background: #fff; border: 1.5px solid #E8E0D8; border-radius: 10px; padding: 14px 16px; text-align: center; }
+    .stat-num { font-family: 'Noto Serif JP', serif; font-size: 26px; font-weight: 600; color: #2C2C2C; line-height: 1; }
+    .stat-num.visited { color: #4A7C59; }
+    .stat-label { font-size: 11px; color: #B8A99A; margin-top: 4px; letter-spacing: 0.05em; }
+
+    /* ===================== FILTER + SORT ===================== */
+    .controls { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 24px; flex-wrap: wrap; }
+    .filter-bar { display: flex; gap: 8px; flex-wrap: wrap; }
+    .filter-btn {
+      padding: 6px 16px; border-radius: 20px; border: 1.5px solid #B8A99A;
+      background: transparent; color: #B8A99A;
+      font-family: 'Noto Sans JP', sans-serif; font-size: 13px; cursor: pointer; transition: all 0.15s;
+    }
+    .filter-btn:hover { border-color: #2C2C2C; color: #2C2C2C; }
+    .filter-btn.active { background: #2C2C2C; color: #FAF7F2; border-color: #2C2C2C; }
+
+    .sort-select {
+      padding: 6px 28px 6px 12px; border-radius: 20px; border: 1.5px solid #B8A99A;
+      background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23B8A99A'/%3E%3C/svg%3E") no-repeat right 10px center;
+      color: #2C2C2C; font-family: 'Noto Sans JP', sans-serif; font-size: 13px;
+      cursor: pointer; appearance: none; outline: none; transition: border-color 0.15s; white-space: nowrap;
+    }
+    .sort-select:focus { border-color: #2C2C2C; }
+
+    /* ===================== DELETE CONFIRM ===================== */
+    .delete-confirm {
+      display: flex; align-items: center; gap: 8px; flex-shrink: 0; padding-top: 2px;
+    }
+    .delete-confirm-text { font-size: 12px; color: #C0392B; white-space: nowrap; }
+    .confirm-yes {
+      padding: 4px 10px; background: #C0392B; color: #fff; border: none;
+      border-radius: 6px; font-size: 12px; font-family: 'Noto Sans JP', sans-serif; cursor: pointer;
+    }
+    .confirm-no {
+      padding: 4px 10px; background: #E8E0D8; color: #2C2C2C; border: none;
+      border-radius: 6px; font-size: 12px; font-family: 'Noto Sans JP', sans-serif; cursor: pointer;
+    }
+
+    /* ===================== CARDS ===================== */
+    .card-list { display: flex; flex-direction: column; gap: 12px; }
+    .card {
+      background: #fff; border: 1.5px solid #E8E0D8; border-radius: 12px;
+      padding: 18px 20px; display: flex; align-items: flex-start; gap: 16px;
+      transition: box-shadow 0.15s, border-color 0.15s; position: relative; overflow: hidden;
+    }
+    .card:hover { box-shadow: 0 4px 16px rgba(44,44,44,0.08); border-color: #C0392B; }
+    .card.visited { border-color: #4A7C59; background: #F7FBF8; }
+    .card.loading-row { opacity: 0.5; pointer-events: none; }
+
+    .card-check {
+      flex-shrink: 0; width: 28px; height: 28px; border-radius: 50%;
+      border: 2px solid #B8A99A; background: transparent; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px; transition: all 0.18s; margin-top: 2px; color: transparent;
+    }
+    .card-check:hover { border-color: #4A7C59; color: #4A7C59; background: #F0F8F3; }
+    .card.visited .card-check { background: #4A7C59; border-color: #4A7C59; color: #fff; }
+
+    .card-body { flex: 1; min-width: 0; }
+    .card-name { font-family: 'Noto Serif JP', serif; font-size: 16px; font-weight: 600; color: #2C2C2C; margin-bottom: 4px; word-break: break-all; }
+    .card.visited .card-name { color: #4A7C59; }
+    .card-address { font-size: 12px; color: #888; margin-bottom: 2px; }
+    .card-memo { font-size: 12px; color: #7A6A5A; background: #F5F0E8; border-left: 3px solid #C0392B; padding: 4px 8px; border-radius: 0 4px 4px 0; margin-top: 6px; white-space: pre-wrap; line-height: 1.5; }
+    .card-url a { font-size: 12px; color: #C0392B; text-decoration: none; word-break: break-all; opacity: 0.85; }
+    .card-url a:hover { opacity: 1; text-decoration: underline; }
+
+    .card-stamp {
+      position: absolute; top: 12px; right: 14px;
+      background: #4A7C59; color: #fff; font-size: 10px; font-weight: 700;
+      letter-spacing: 0.05em; padding: 3px 9px; border-radius: 12px;
+      opacity: 0; transform: scale(0.8); transition: all 0.2s;
+    }
+    .card.visited .card-stamp { opacity: 1; transform: scale(1); }
+
+    .card-actions { display: flex; gap: 8px; flex-shrink: 0; align-items: flex-start; padding-top: 2px; }
+    .icon-btn {
+      background: none; border: none; cursor: pointer; color: #B8A99A;
+      font-size: 16px; padding: 4px; border-radius: 6px; transition: all 0.15s; line-height: 1;
+    }
+    .icon-btn:hover { color: #C0392B; background: #FFF0EE; }
+
+    /* ===================== EDIT INLINE ===================== */
+    .edit-row { display: flex; flex-direction: column; gap: 6px; flex: 1; }
+    .edit-memo { resize: vertical; line-height: 1.6; font-family: 'Noto Sans JP', sans-serif; }
+    .edit-input {
+      padding: 6px 10px; border: 1.5px solid #C0392B; border-radius: 6px;
+      font-family: 'Noto Sans JP', sans-serif; font-size: 14px; color: #2C2C2C; outline: none; background: #fff;
+    }
+    .edit-actions { display: flex; gap: 6px; margin-top: 4px; }
+    .save-btn { padding: 5px 14px; background: #4A7C59; color: #fff; border: none; border-radius: 6px; font-size: 13px; font-family: 'Noto Sans JP', sans-serif; cursor: pointer; }
+    .cancel-btn { padding: 5px 14px; background: #E8E0D8; color: #2C2C2C; border: none; border-radius: 6px; font-size: 13px; font-family: 'Noto Sans JP', sans-serif; cursor: pointer; }
+
+    /* ===================== EMPTY ===================== */
+    .empty { text-align: center; padding: 48px 0 24px; color: #B8A99A; font-size: 14px; }
+    .empty-icon { font-size: 36px; margin-bottom: 12px; }
+
+    /* ===================== ADD FORM ===================== */
+    .add-section { margin-top: 36px; padding-top: 28px; border-top: 1.5px dashed #E8E0D8; }
+    .add-title { font-family: 'Noto Serif JP', serif; font-size: 16px; font-weight: 600; color: #2C2C2C; margin-bottom: 4px; }
+    .add-hint { font-size: 12px; color: #B8A99A; margin-bottom: 14px; line-height: 1.6; }
+    .paste-area {
+      width: 100%; min-height: 90px; padding: 12px 14px;
+      border: 1.5px solid #E8E0D8; border-radius: 8px;
+      font-family: 'Noto Sans JP', sans-serif; font-size: 14px; color: #2C2C2C;
+      background: #fff; outline: none; resize: vertical; line-height: 1.7;
+      transition: border-color 0.15s; margin-bottom: 12px;
+    }
+    .paste-area:focus, .paste-area.has-content { border-color: #C0392B; }
+    .paste-area::placeholder { color: #B8A99A; }
+
+    .preview {
+      background: #FFFAF9; border: 1.5px solid #C0392B; border-radius: 10px;
+      padding: 14px 16px; margin-bottom: 12px; display: flex; flex-direction: column; gap: 6px;
+    }
+    .preview-label { font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: #C0392B; font-weight: 700; margin-bottom: 2px; }
+    .preview-row { display: flex; align-items: baseline; gap: 10px; }
+    .preview-field { font-size: 11px; color: #B8A99A; white-space: nowrap; flex-shrink: 0; }
+    .preview-name-input {
+      flex: 1; font-family: 'Noto Serif JP', serif; font-size: 16px; font-weight: 600; color: #2C2C2C;
+      border: none; border-bottom: 1.5px solid #E8E0D8; outline: none; background: transparent;
+      padding: 2px 4px; transition: border-color 0.15s; min-width: 0;
+    }
+    .preview-name-input:focus { border-bottom-color: #C0392B; }
+    .preview-addr-text { font-size: 12px; color: #888; }
+    .preview-url-text { font-size: 12px; color: #C0392B; word-break: break-all; opacity: 0.8; }
+    .no-url-hint { font-size: 12px; color: #B8A99A; font-style: italic; }
+
+    .add-btn {
+      width: 100%; padding: 13px; background: #C0392B; color: #fff; border: none;
+      border-radius: 8px; font-family: 'Noto Sans JP', sans-serif;
+      font-size: 14px; font-weight: 700; cursor: pointer; letter-spacing: 0.05em; transition: background 0.15s;
+    }
+    .add-btn:hover { background: #A93226; }
+    .add-btn:disabled { background: #B8A99A; cursor: not-allowed; }
+
+    /* ===================== SETUP BANNER ===================== */
+    .setup-banner {
+      background: #FFF8E1; border: 1.5px solid #F5A623; border-radius: 10px;
+      padding: 16px 20px; margin-bottom: 28px; font-size: 13px; line-height: 1.7; color: #5C4A00;
+    }
+    .setup-banner strong { color: #C0392B; }
+    .setup-banner a { color: #C0392B; }
+    .setup-banner code {
+      background: #FFF0C0; padding: 1px 6px; border-radius: 4px;
+      font-size: 12px; font-family: monospace; word-break: break-all;
+    }
+
+    /* ===================== TOAST ===================== */
+    .toast {
+      position: fixed; bottom: 24px; left: 50%;
+      transform: translateX(-50%) translateY(80px);
+      background: #2C2C2C; color: #FAF7F2; padding: 10px 22px; border-radius: 24px;
+      font-size: 13px; font-family: 'Noto Sans JP', sans-serif;
+      transition: transform 0.25s; z-index: 100; white-space: nowrap;
+    }
+    .toast.show { transform: translateX(-50%) translateY(0); }
+
+    /* ===================== PAGE LOADING ===================== */
+    .page-loading { text-align: center; padding: 60px 0; color: #B8A99A; font-size: 14px; }
+    .spinner {
+      display: inline-block; width: 20px; height: 20px;
+      border: 2px solid #E8E0D8; border-top-color: #C0392B;
+      border-radius: 50%; animation: spin 0.7s linear infinite; margin-bottom: 12px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+<div class="app">
+  <header class="header">
+    <p class="header-eyebrow">Family Restaurant Map</p>
+    <h1 class="header-title">近所のごはん帖</h1>
+    <p class="header-sub">家族みんなで更新できる、近所の飲食店リスト</p>
+  </header>
+
+  <div id="setup-banner" class="setup-banner" style="display:none">
+    ⚙️ <strong>初回設定が必要です。</strong><br/>
+    <code>index.html</code> の先頭にある <code>GAS_URL</code> に、Google Apps Script のデプロイURLを貼ってください。<br/>
+    設定手順は同梱の <strong>README.md</strong> を参照してください。
+  </div>
+
+  <div class="stats">
+    <div class="stat-item"><div class="stat-num" id="stat-total">—</div><div class="stat-label">登録店舗</div></div>
+    <div class="stat-item"><div class="stat-num visited" id="stat-visited">—</div><div class="stat-label">行ったお店</div></div>
+    <div class="stat-item"><div class="stat-num" id="stat-remaining">—</div><div class="stat-label">まだのお店</div></div>
+  </div>
+
+  <div class="controls">
+    <div class="filter-bar">
+      <button class="filter-btn active" data-filter="all" onclick="setFilter('all')">すべて</button>
+      <button class="filter-btn" data-filter="unvisited" onclick="setFilter('unvisited')">まだ行ってない</button>
+      <button class="filter-btn" data-filter="visited" onclick="setFilter('visited')">行った！</button>
+    </div>
+    <select class="sort-select" id="sort-select" onchange="setSort(this.value)">
+      <option value="newest">登録順（新しい順）</option>
+      <option value="oldest">登録順（古い順）</option>
+      <option value="name">店名順（あいうえお）</option>
+      <option value="address">住所順</option>
+    </select>
+  </div>
+
+  <div id="card-area">
+    <div class="page-loading"><div class="spinner"></div><br/>読み込み中...</div>
+  </div>
+
+  <div class="add-section">
+    <p class="add-title">お店を追加する</p>
+    <p class="add-hint">
+      食べログの店舗ページで「共有」からコピーしたテキストをそのまま貼り付けてください。<br/>
+      店名だけ・URLだけの入力でもOKです。
+    </p>
+    <textarea id="paste-area" class="paste-area"
+      placeholder="トラットリア・コッレ&#10;050-5571-3581&#10;東京都中央区日本橋浜町1-4-16&#10;https://tabelog.com/tokyo/..."
+      oninput="handlePasteInput(this.value)"></textarea>
+
+    <div id="preview" style="display:none" class="preview">
+      <div class="preview-label">✦ 解析結果 — 店名を確認・修正してください</div>
+      <div class="preview-row">
+        <span class="preview-field">店名</span>
+        <input id="preview-name" class="preview-name-input" placeholder="店名を入力" />
+      </div>
+      <div class="preview-row">
+        <span class="preview-field">住所</span>
+        <span id="preview-address" class="preview-addr-text"></span>
+      </div>
+      <div class="preview-row">
+        <span class="preview-field">URL</span>
+        <span id="preview-url" class="preview-url-text"></span>
+      </div>
+    </div>
+
+    <div id="memo-row" style="display:none; margin-bottom:12px;">
+      <textarea id="new-memo" class="paste-area" style="min-height:60px; margin-bottom:0;"
+        placeholder="メモ（任意）&#10;例：パスタがおすすめ、予約必須、子連れOK…"></textarea>
+    </div>
+    <button class="add-btn" id="add-btn" onclick="addRestaurant()" disabled>追加する</button>
+  </div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script>
+// ============================================================
+// ★ ここにGoogle Apps ScriptのデプロイURLを貼ってください ★
+// ============================================================
+const GAS_URL = "https://script.google.com/macros/s/AKfycbyPRzoNIqVTcZcNIiXkDPcnVA53XqxZrR0ahQcOU9aEFkccyjNGJRjy2Gk5XASKWLkm/exec";
+// ============================================================
+
+let restaurants = [];
+let currentFilter = "all";
+let currentSort = "newest";
+let confirmingDeleteId = null;
+let editingId = null;
+
+// ---- パース ----
+function parseTabelogPaste(text) {
+  const lines = text.trim().split(/\n/).map(l => l.trim()).filter(Boolean);
+  const urlLine = lines.find(l => /https?:\/\/tabelog\.com\S*/i.test(l));
+  const url = urlLine ? (urlLine.match(/https?:\/\/tabelog\.com\S*/i)?.[0] || "").replace(/[）)、,\s]+$/, "") : "";
+  const phoneRe = /^[\d\-\(\)０-９ー−\s]+$|^\d{2,4}[-−]\d{2,4}[-−]\d{4}/;
+  const addrRe = /^(東京|大阪|神奈川|埼玉|千葉|京都|愛知|福岡|北海道|〒|\d{3}-\d{4})/;
+  const urlRe = /^https?:\/\//;
+  const nameLine = lines.find(l => !phoneRe.test(l) && !addrRe.test(l) && !urlRe.test(l));
+  const addrLine = lines.find(l => addrRe.test(l) && !phoneRe.test(l));
+  return { name: nameLine || "", url, address: addrLine || "" };
+}
+
+// ---- API ----
+async function apiFetch(method, body) {
+  if (GAS_URL === "YOUR_GAS_URL_HERE") {
+    document.getElementById("setup-banner").style.display = "block";
+    throw new Error("GAS_URL未設定");
+  }
+  const opts = method === "GET"
+    ? { method: "GET" }
+    : { method: "POST", body: JSON.stringify(body) };
+  const res = await fetch(GAS_URL, opts);
+  return res.json();
+}
+
+// ---- データ読み込み ----
+async function loadData() {
+  try {
+    const data = await apiFetch("GET");
+    if (data.ok) {
+      restaurants = data.data || [];
+      renderAll();
+    }
+  } catch(e) {
+    if (GAS_URL === "YOUR_GAS_URL_HERE") {
+      document.getElementById("setup-banner").style.display = "block";
+      document.getElementById("card-area").innerHTML =
+        '<div class="empty"><div class="empty-icon">⚙️</div>上の手順でセットアップしてください</div>';
+      updateStats();
+    } else {
+      document.getElementById("card-area").innerHTML =
+        '<div class="empty"><div class="empty-icon">⚠️</div>読み込みに失敗しました。ページを再読み込みしてください。</div>';
+    }
+  }
+}
+
+// ---- フィルター / ソート ----
+function setFilter(f) {
+  currentFilter = f;
+  document.querySelectorAll(".filter-btn").forEach(b => b.classList.toggle("active", b.dataset.filter === f));
+  renderCards();
+}
+
+function setSort(s) {
+  currentSort = s;
+  renderCards();
+}
+
+function sortedRestaurants(list) {
+  const copy = [...list];
+  if (currentSort === "oldest") {
+    copy.sort((a, b) => Number(a.id) - Number(b.id));
+  } else if (currentSort === "name") {
+    copy.sort((a, b) => a.name.localeCompare(b.name, "ja"));
+  } else if (currentSort === "address") {
+    copy.sort((a, b) => (a.address || "").localeCompare(b.address || "", "ja"));
+  } else {
+    copy.sort((a, b) => Number(b.id) - Number(a.id));
+  }
+  return copy;
+}
+
+// ---- 統計 ----
+function updateStats() {
+  const total = restaurants.length;
+  const visited = restaurants.filter(r => r.visited).length;
+  document.getElementById("stat-total").textContent = total;
+  document.getElementById("stat-visited").textContent = visited;
+  document.getElementById("stat-remaining").textContent = total - visited;
+}
+
+// ---- カード描画 ----
+function renderCards() {
+  const filtered = sortedRestaurants(restaurants.filter(r => {
+    if (currentFilter === "visited") return r.visited;
+    if (currentFilter === "unvisited") return !r.visited;
+    return true;
+  }));
+  const area = document.getElementById("card-area");
+  if (filtered.length === 0) {
+    const msg = currentFilter === "visited" ? "まだ訪問済みのお店がありません。"
+              : currentFilter === "unvisited" ? "未訪問のお店はありません。全制覇！🎉"
+              : "まだお店が登録されていません。下のフォームから追加しましょう！";
+    area.innerHTML = `<div class="empty"><div class="empty-icon">🍽️</div>${msg}</div>`;
+    return;
+  }
+  area.innerHTML = filtered.map(r => cardHTML(r)).join("");
+}
+
+function renderAll() {
+  updateStats();
+  renderCards();
+}
+
+function cardHTML(r) {
+  if (editingId === r.id) {
+    return `
+    <div class="card${r.visited ? " visited" : ""}" id="card-${r.id}">
+      <button class="card-check" onclick="toggleVisited('${r.id}')"${r.visited ? "" : ""}>✓</button>
+      <div class="edit-row">
+        <input class="edit-input" id="edit-name-${r.id}" value="${escHtml(r.name)}" placeholder="店名" />
+        <input class="edit-input" id="edit-url-${r.id}" value="${escHtml(r.url)}" placeholder="食べログURL" />
+        <input class="edit-input" id="edit-address-${r.id}" value="${escHtml(r.address)}" placeholder="住所" />
+        <textarea class="edit-input edit-memo" id="edit-memo-${r.id}" placeholder="メモ（任意）" rows="2">${escHtml(r.memo)}</textarea>
+        <div class="edit-actions">
+          <button class="save-btn" onclick="saveEdit('${r.id}')">保存</button>
+          <button class="cancel-btn" onclick="cancelEdit()">キャンセル</button>
+        </div>
+      </div>
+      <div class="card-stamp">✓ 行った！</div>
+    </div>`;
+  }
+  return `
+  <div class="card${r.visited ? " visited" : ""}" id="card-${r.id}">
+    <button class="card-check" onclick="toggleVisited('${r.id}')" title="${r.visited ? "未訪問に戻す" : "行った！にする"}">✓</button>
+    <div class="card-body">
+      <div class="card-name">${escHtml(r.name)}</div>
+      ${r.address ? `<div class="card-address">${escHtml(r.address)}</div>` : ""}
+      ${r.memo ? `<div class="card-memo">${escHtml(r.memo)}</div>` : ""}
+      ${r.url ? `<div class="card-url"><a href="${escHtml(r.url)}" target="_blank" rel="noopener noreferrer">食べログで見る →</a></div>` : ""}
+    </div>
+    <div class="card-stamp">✓ 行った！</div>
+    <div class="card-actions">
+      <button class="icon-btn" onclick="startEdit('${r.id}')" title="編集">✏️</button>
+      <button class="icon-btn" onclick="deleteRestaurant('${r.id}')" title="削除">🗑️</button>
+    </div>
+  </div>`;
+}
+
+function escHtml(s) {
+  return String(s || "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+}
+
+// ---- 操作 ----
+async function toggleVisited(id) {
+  const card = document.getElementById("card-" + id);
+  if (card) card.classList.add("loading-row");
+  try {
+    const res = await apiFetch("POST", { action: "toggle", id });
+    if (res.ok) {
+      const r = restaurants.find(x => x.id === id);
+      r.visited = res.visited;
+      renderAll();
+      showToast(r.visited ? `「${r.name}」を行った！にしました ✓` : `「${r.name}」を未訪問に戻しました`);
+    }
+  } catch { showToast("更新に失敗しました"); }
+}
+
+function startEdit(id) {
+  editingId = id;
+  renderCards();
+}
+function cancelEdit() {
+  editingId = null;
+  renderCards();
+}
+async function saveEdit(id) {
+  const name = document.getElementById("edit-name-" + id)?.value.trim();
+  const url = document.getElementById("edit-url-" + id)?.value.trim();
+  const address = document.getElementById("edit-address-" + id)?.value.trim();
+  const memo = document.getElementById("edit-memo-" + id)?.value.trim();
+  if (!name) return;
+  try {
+    const res = await apiFetch("POST", { action: "update", id, name, url, address, memo });
+    if (res.ok) {
+      const r = restaurants.find(x => x.id === id);
+      r.name = name; r.url = url; r.address = address; r.memo = memo;
+      editingId = null;
+      renderAll();
+      showToast("更新しました");
+    }
+  } catch { showToast("更新に失敗しました"); }
+}
+
+function confirmDelete(id) {
+  // 他の確認中があればリセット
+  if (confirmingDeleteId && confirmingDeleteId !== id) cancelDelete(confirmingDeleteId);
+  confirmingDeleteId = id;
+  const actionsEl = document.getElementById("actions-" + id);
+  if (!actionsEl) return;
+  actionsEl.innerHTML = `
+    <div class="delete-confirm">
+      <span class="delete-confirm-text">削除しますか？</span>
+      <button class="confirm-yes" onclick="executeDelete('${id}')">削除</button>
+      <button class="confirm-no" onclick="cancelDelete('${id}')">戻す</button>
+    </div>`;
+}
+
+function cancelDelete(id) {
+  confirmingDeleteId = null;
+  const r = restaurants.find(x => x.id === id);
+  if (!r) return;
+  const actionsEl = document.getElementById("actions-" + id);
+  if (!actionsEl) return;
+  actionsEl.innerHTML = `
+    <button class="icon-btn" onclick="startEdit('${id}')" title="編集">✏️</button>
+    <button class="icon-btn" onclick="confirmDelete('${id}')" title="削除">🗑️</button>`;
+}
+
+async function executeDelete(id) {
+  const r = restaurants.find(x => x.id === id);
+  if (!r) return;
+  confirmingDeleteId = null;
+  try {
+    const res = await apiFetch("POST", { action: "delete", id });
+    if (res.ok) {
+      restaurants = restaurants.filter(x => x.id !== id);
+      renderAll();
+      showToast(`「${r.name}」を削除しました`);
+    }
+  } catch { showToast("削除に失敗しました"); }
+}
+
+// ---- 追加フォーム ----
+let previewUrl = "";
+
+function handlePasteInput(val) {
+  const area = document.getElementById("paste-area");
+  area.classList.toggle("has-content", !!val.trim());
+
+  const preview = document.getElementById("preview");
+  const addBtn = document.getElementById("add-btn");
+
+  if (!val.trim()) {
+    preview.style.display = "none";
+    document.getElementById("memo-row").style.display = "none";
+    document.getElementById("new-memo").value = "";
+    addBtn.disabled = true;
+    previewUrl = "";
+    return;
+  }
+  const parsed = parseTabelogPaste(val);
+  previewUrl = parsed.url;
+  document.getElementById("preview-name").value = parsed.name;
+  document.getElementById("preview-address").textContent = parsed.address || "（住所なし）";
+  document.getElementById("preview-url").textContent = parsed.url || "（URLなし）";
+  preview.style.display = "flex";
+  document.getElementById("memo-row").style.display = "block";
+  addBtn.disabled = !parsed.name;
+
+  document.getElementById("preview-name").oninput = function() {
+    addBtn.disabled = !this.value.trim();
+  };
+}
+
+async function addRestaurant() {
+  const name = document.getElementById("preview-name")?.value.trim();
+  const url = previewUrl;
+  if (!name) return;
+
+  const address = document.getElementById("preview-address")?.textContent.replace("（住所なし）","").trim() || "";
+  const memo = document.getElementById("new-memo")?.value.trim() || "";
+  const item = {
+    id: Date.now().toString(),
+    name, url, address, memo,
+    visited: false,
+    createdAt: new Date().toLocaleDateString("ja-JP"),
+  };
+
+  document.getElementById("add-btn").disabled = true;
+  try {
+    const res = await apiFetch("POST", { action: "add", item });
+    if (res.ok) {
+      restaurants.unshift(item);
+      document.getElementById("paste-area").value = "";
+      document.getElementById("preview").style.display = "none";
+      document.getElementById("paste-area").classList.remove("has-content");
+      document.getElementById("memo-row").style.display = "none";
+      document.getElementById("new-memo").value = "";
+      previewUrl = "";
+      renderAll();
+      showToast(`「${name}」を追加しました`);
+    }
+  } catch { showToast("追加に失敗しました"); }
+  document.getElementById("add-btn").disabled = false;
+}
+
+// ---- Toast ----
+let toastTimer;
+function showToast(msg) {
+  const t = document.getElementById("toast");
+  t.textContent = msg;
+  t.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove("show"), 2200);
+}
+
+// ---- 起動 ----
+loadData();
+</script>
+</body>
+</html>
