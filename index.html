@@ -321,11 +321,24 @@ async function apiFetch(method, body) {
 }
 
 // ---- データ読み込み ----
+const CACHE_KEY = "gohan-list-cache";
+
 async function loadData() {
+  // キャッシュがあれば即表示
+  try {
+    const cached = localStorage.getItem(CACHE_KEY);
+    if (cached) {
+      restaurants = JSON.parse(cached);
+      renderAll();
+    }
+  } catch(e) {}
+
+  // バックグラウンドで最新データ取得
   try {
     const data = await apiFetch("GET");
     if (data.ok) {
       restaurants = data.data || [];
+      localStorage.setItem(CACHE_KEY, JSON.stringify(restaurants));
       renderAll();
     }
   } catch(e) {
@@ -334,7 +347,7 @@ async function loadData() {
       document.getElementById("card-area").innerHTML =
         '<div class="empty"><div class="empty-icon">⚙️</div>上の手順でセットアップしてください</div>';
       updateStats();
-    } else {
+    } else if (!localStorage.getItem(CACHE_KEY)) {
       document.getElementById("card-area").innerHTML =
         '<div class="empty"><div class="empty-icon">⚠️</div>読み込みに失敗しました。ページを再読み込みしてください。</div>';
     }
