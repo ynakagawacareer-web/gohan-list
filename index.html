@@ -426,11 +426,11 @@ function cardHTML(r) {
       ${r.memo ? `<div class="card-memo">${escHtml(r.memo)}</div>` : ""}
     </div>
     <div class="card-stamp">✓ 行った！</div>
-    <div class="card-actions">
+    <div class="card-actions" id="actions-${r.id}">
       ${r.url ? `<a class="icon-btn" href="${escHtml(r.url)}" target="_blank" rel="noopener noreferrer" title="食べログで見る"><img src="https://tabelog.com/favicon.ico" width="16" height="16" alt="食べログ" style="vertical-align:middle;border-radius:3px;"></a>` : ""}
       <button class="icon-btn" onclick="openMaps('${r.id}')" title="Google マップで開く">🗺️</button>
       <button class="icon-btn" onclick="startEdit('${r.id}')" title="編集">✏️</button>
-      <button class="icon-btn" onclick="deleteRestaurant('${r.id}')" title="削除">🗑️</button>
+      <button class="icon-btn" onclick="confirmDelete('${r.id}')" title="削除">🗑️</button>
     </div>
   </div>`;
 }
@@ -496,13 +496,7 @@ function confirmDelete(id) {
 
 function cancelDelete(id) {
   confirmingDeleteId = null;
-  const r = restaurants.find(x => x.id === id);
-  if (!r) return;
-  const actionsEl = document.getElementById("actions-" + id);
-  if (!actionsEl) return;
-  actionsEl.innerHTML = `
-    <button class="icon-btn" onclick="startEdit('${id}')" title="編集">✏️</button>
-    <button class="icon-btn" onclick="confirmDelete('${id}')" title="削除">🗑️</button>`;
+  renderCards();
 }
 
 async function executeDelete(id) {
